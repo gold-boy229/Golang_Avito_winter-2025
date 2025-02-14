@@ -1,7 +1,7 @@
 package entities
 
 type Merch struct {
-	Id   uint   `gorm:"primaryKey" json:"id"`
+	Id   uint   `json:"id" gorm:"primaryKey"`
 	Type string `json:"type"`
 	Cost uint   `json:"cost"`
 }

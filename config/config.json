@@ -1,0 +1,4 @@
+{
+    "connection_string": "postgres://postgres:postgres@127.0.0.1:5432/merch_shop_v2?sslmode=disable",
+    "port": 8080
+}

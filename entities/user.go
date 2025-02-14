@@ -5,10 +5,10 @@ import (
 )
 
 type User struct {
-	Id       uint   `gorm:"primaryKey" json:"id"`
-	Username string `gorm:"unique" json:"username"`
+	Id       uint   `json:"id" gorm:"primaryKey"`
+	Username string `json:"username" gorm:"unique"`
 	Password string `json:"password"`
-	Balance  uint   `gorm:"default:1000" json:"balance"`
+	Balance  uint   `json:"balance" gorm:"default:1000"`
 }
 
 func (user *User) CheckPassword(providedPassword string) (err error) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MerchShop/config"
 	"MerchShop/controllers"
 	"MerchShop/database"
 	"fmt"
@@ -16,10 +17,10 @@ var DB *gorm.DB
 func main() {
 
 	// Load Configurations from config.json using Viper
-	LoadAppConfig()
+	config.LoadAppConfig()
 
 	// Initialize Database
-	database.Connect(AppConfig.ConnectionString)
+	database.Connect(config.AppConfig.ConnectionString)
 	database.Migrate()
 
 	// Initialize the router
@@ -29,8 +30,8 @@ func main() {
 	RegisterProductRoutes(router)
 
 	// Start the server
-	log.Printf(fmt.Sprintf("Starting Server on port %s", AppConfig.Port))
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", AppConfig.Port), router))
+	log.Printf(fmt.Sprintf("Starting Server on port %s", config.AppConfig.Port))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.AppConfig.Port), router))
 }
 
 func RegisterProductRoutes(router *mux.Router) {
