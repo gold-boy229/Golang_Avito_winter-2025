@@ -1,3 +1,5 @@
+Ссылка на репозиторий с заданием: https://github.com/avito-tech/tech-internship/tree/main/Tech%20Internships/Backend/Backend-trainee-assignment-winter-2025
+
 
 Вопросы по реализации:
 1) При реализации обработчика BuyItemHandler хотел добавить метод BuyMerch 
