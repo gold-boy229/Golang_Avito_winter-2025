@@ -11,26 +11,23 @@ type User struct {
 	Balance  uint   `json:"balance" gorm:"default:1000"`
 }
 
-func (user *User) CheckPassword(providedPassword string) (err error) {
-	err = nil
+func (user *User) CheckPassword(providedPassword string) error {
 	if user.Password != providedPassword {
-		err = fmt.Errorf("invalid credentials")
+		return fmt.Errorf("invalid credentials")
 	}
-	return
+	return nil
 }
 
-func (user *User) CanSpendCoins(amount uint) (err error) {
-	err = nil
+func (user *User) CanSpendCoins(amount uint) error {
 	if user.Balance < amount {
-		err = fmt.Errorf("not enough coins. Have: %d, want to spend: %d", user.Balance, amount)
+		return fmt.Errorf("not enough coins. Have: %d, want to spend: %d", user.Balance, amount)
 	}
-	return
+	return nil
 }
 
-func (user *User) IsAnotherUser(AnotherUser *User) (err error) {
-	err = nil
-	if user.Username == AnotherUser.Username {
-		err = fmt.Errorf("it's the same person")
+func (user *User) IsSameUser(anotherUsername string) error {
+	if user.Username == anotherUsername {
+		return fmt.Errorf("it's the same person")
 	}
-	return
+	return nil
 }

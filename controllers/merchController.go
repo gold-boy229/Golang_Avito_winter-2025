@@ -116,8 +116,8 @@ func sendCoinsToUser(fromUser *entities.User, toUser *entities.User, amount uint
 		return http.StatusBadRequest, err
 	}
 
-	err = fromUser.IsAnotherUser(toUser)
-	if err != nil {
+	err = fromUser.IsSameUser(toUser.Username)
+	if err == nil {
 		return http.StatusBadRequest, err
 	}
 
