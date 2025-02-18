@@ -7,30 +7,6 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-// var jwtKey = []byte("supersecretkey")
-
-// type JWTClaim struct {
-// 	Username string `json:"username"`
-// 	jwt.StandardClaims
-// }
-
-// func GenerateJWT(username string) (string, error) {
-// 	expirationTime := time.Now().Add(1 * time.Hour)
-// 	claims := &JWTClaim{
-// 		Username: username,
-// 		StandardClaims: jwt.StandardClaims{
-// 			ExpiresAt: expirationTime.Unix(),
-// 		},
-// 	}
-// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-// 	tokenString, err := token.SignedString(jwtKey)
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to generate JWT: " + err.Error())
-// 	}
-
-// 	return tokenString, nil
-// }
-
 func TestGenerateJWT(t *testing.T) {
 	username := "testuser"
 	tokenString, err := GenerateJWT(username)
