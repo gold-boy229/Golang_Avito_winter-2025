@@ -23,3 +23,23 @@ func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
 func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, model.ErrorResponse{Errors: message})
 }
+
+func respondBadRequest(w http.ResponseWriter, message string) {
+	respondError(w, http.StatusBadRequest, message)
+}
+
+func respondUnauthorized(w http.ResponseWriter, message string) {
+	respondError(w, http.StatusUnauthorized, message)
+}
+
+func respondNotFound(w http.ResponseWriter, message string) {
+	respondError(w, http.StatusNotFound, message)
+}
+
+func respondMethodNotAllowed(w http.ResponseWriter, message string) {
+	respondError(w, http.StatusNotFound, message)
+}
+
+func respondInternalServerError(w http.ResponseWriter, message string) {
+	respondError(w, http.StatusInternalServerError, message)
+}

@@ -15,7 +15,7 @@ import (
 func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
 	curUser, err := getUserAfterMiddleware(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		respondBadRequest(w, err.Error())
 		return
 	}
 
@@ -28,19 +28,19 @@ func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 	inventoryItems, err = database.GetUserInventoryItems(curUser)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondInternalServerError(w, err.Error())
 		return
 	}
 
 	receivedOperations, err = database.GetReceivedOperations(curUser)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondInternalServerError(w, err.Error())
 		return
 	}
 
 	sentOperations, err = database.GetSentOperations(curUser)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondInternalServerError(w, err.Error())
 		return
 	}
 
@@ -56,19 +56,19 @@ func SendCoinHandler(w http.ResponseWriter, r *http.Request) {
 	var sendCoinRequest model.SendCoinRequest
 	err := json.NewDecoder(r.Body).Decode(&sendCoinRequest)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body.\n"+err.Error())
+		respondBadRequest(w, "Invalid request body.\n"+err.Error())
 		return
 	}
 
 	curUser, err := getUserAfterMiddleware(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		respondBadRequest(w, err.Error())
 		return
 	}
 
 	toUser, err := database.GetUserByUsername(sendCoinRequest.ToUser)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		respondBadRequest(w, err.Error())
 		return
 	}
 
@@ -125,13 +125,13 @@ func BuyItemHandler(w http.ResponseWriter, r *http.Request) {
 	var merchType string = vars["item"]
 	merch, err := database.GetMerchByType(merchType)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		respondBadRequest(w, err.Error())
 		return
 	}
 
 	user, err := getUserAfterMiddleware(r)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		respondBadRequest(w, err.Error())
 		return
 	}
 
@@ -178,12 +178,12 @@ func GetAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&authRequest)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body.\n"+err.Error())
+		respondBadRequest(w, "Invalid request body.\n"+err.Error())
 		return
 	}
 
 	if authRequest.Username == "" || authRequest.Password == "" {
-		respondError(w, http.StatusBadRequest, "username and password shouldn't be empty")
+		respondBadRequest(w, "username and password shouldn't be empty")
 		return
 	}
 
@@ -193,20 +193,20 @@ func GetAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := database.GetUserByUsername(authRequest.Username)
 	if err == nil {
 		if err := user.CheckPassword(authRequest.Password); err != nil {
-			respondError(w, http.StatusUnauthorized, err.Error())
+			respondUnauthorized(w, err.Error())
 			return
 		}
 	} else {
 		newUser := entities.User{Username: authRequest.Username, Password: authRequest.Password}
 		if err := database.Instance.Create(&newUser).Error; err != nil {
-			respondError(w, http.StatusInternalServerError, "Couldn't create a new user.\n"+err.Error())
+			respondInternalServerError(w, "Couldn't create a new user.\n"+err.Error())
 			return
 		}
 	}
 
 	tokenJWT, err := jwtutil.GenerateJWT(authRequest.Username)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondInternalServerError(w, err.Error())
 		return
 	}
 
@@ -223,9 +223,9 @@ func getUserAfterMiddleware(r *http.Request) (user entities.User, err error) {
 ////
 
 func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotFound, "Wrong path or this function isn't implemented yet")
+	respondNotFound(w, "Wrong path or this function isn't implemented yet")
 }
 
 func MethodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusMethodNotAllowed, http.StatusText(http.StatusMethodNotAllowed))
+	respondMethodNotAllowed(w, http.StatusText(http.StatusMethodNotAllowed))
 }
