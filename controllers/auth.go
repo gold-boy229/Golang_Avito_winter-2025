@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"MerchShop/database"
+	"MerchShop/entities"
 	"MerchShop/jwtutil"
 	"net/http"
 	"strings"
@@ -31,4 +33,9 @@ func JWTMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		},
 	)
+}
+
+func getUserAfterMiddleware(r *http.Request) (user entities.User, err error) {
+	username := r.Header.Get(USERNAME)
+	return database.GetUserByUsername(username)
 }

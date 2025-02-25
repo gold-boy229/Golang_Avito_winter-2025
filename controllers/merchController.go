@@ -13,32 +13,32 @@ import (
 )
 
 func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
-	curUser, err := getUserAfterMiddleware(r)
+	user, err := getUserAfterMiddleware(r)
 	if err != nil {
 		respondBadRequest(w, err.Error())
 		return
 	}
 
 	var (
-		coins              uint = curUser.Balance
+		coins              uint = user.Balance
 		inventoryItems     []model.InventoryItem
 		receivedOperations []model.ReceivedOperation
 		sentOperations     []model.SentOperation
 	)
 
-	inventoryItems, err = database.GetUserInventoryItems(curUser)
+	inventoryItems, err = database.GetUserInventoryItems(user)
 	if err != nil {
 		respondInternalServerError(w, err.Error())
 		return
 	}
 
-	receivedOperations, err = database.GetReceivedOperations(curUser)
+	receivedOperations, err = database.GetReceivedOperations(user)
 	if err != nil {
 		respondInternalServerError(w, err.Error())
 		return
 	}
 
-	sentOperations, err = database.GetSentOperations(curUser)
+	sentOperations, err = database.GetSentOperations(user)
 	if err != nil {
 		respondInternalServerError(w, err.Error())
 		return
@@ -72,7 +72,7 @@ func SendCoinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	statusCode, err := sendCoinsToUser(&curUser, &toUser, sendCoinRequest.Amount)
+	statusCode, err := sendCoinsToUser(curUser, toUser, sendCoinRequest.Amount)
 	if err != nil {
 		respondError(w, statusCode, err.Error())
 		return
@@ -81,7 +81,7 @@ func SendCoinHandler(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, nil)
 }
 
-func sendCoinsToUser(fromUser *entities.User, toUser *entities.User, amount uint) (statusCode int, err error) {
+func sendCoinsToUser(fromUser, toUser entities.User, amount uint) (statusCode int, err error) {
 	err = fromUser.CanSpendCoins(amount)
 	if err != nil {
 		return http.StatusBadRequest, err
@@ -135,7 +135,7 @@ func BuyItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	statusCode, err := buyMerch(&user, &merch)
+	statusCode, err := buyMerch(user, merch)
 	if err != nil {
 		respondError(w, statusCode, err.Error())
 		return
@@ -144,7 +144,7 @@ func BuyItemHandler(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, nil)
 }
 
-func buyMerch(user *entities.User, merch *entities.Merch) (statusCode int, err error) {
+func buyMerch(user entities.User, merch entities.Merch) (statusCode int, err error) {
 	err = user.CanSpendCoins(merch.Cost)
 	if err != nil {
 		return http.StatusBadRequest, err
@@ -211,13 +211,6 @@ func GetAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, model.AuthResponse{Token: tokenJWT})
-}
-
-////
-
-func getUserAfterMiddleware(r *http.Request) (user entities.User, err error) {
-	username := r.Header.Get(USERNAME)
-	return database.GetUserByUsername(username)
 }
 
 ////
