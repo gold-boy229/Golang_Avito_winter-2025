@@ -9,10 +9,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"gorm.io/gorm"
 )
-
-var DB *gorm.DB
 
 func main() {
 

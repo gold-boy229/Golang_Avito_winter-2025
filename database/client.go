@@ -8,23 +8,10 @@ import (
 	"gorm.io/gorm"
 )
 
-var predefinedMerchItems = []entities.Merch{
-	{Type: "t-shirt", Cost: 80},
-	{Type: "cup", Cost: 20},
-	{Type: "book", Cost: 50},
-	{Type: "pen", Cost: 10},
-	{Type: "powerbank", Cost: 200},
-	{Type: "hoody", Cost: 300},
-	{Type: "umbrella", Cost: 200},
-	{Type: "socks", Cost: 10},
-	{Type: "wallet", Cost: 50},
-	{Type: "pink-hoody", Cost: 500},
-}
-
 var Instance *gorm.DB
-var err error
 
 func Connect(connectionString string) {
+	var err error
 	Instance, err = gorm.Open(postgres.Open(connectionString), &gorm.Config{})
 	if err != nil {
 		log.Fatal(err)
@@ -34,21 +21,49 @@ func Connect(connectionString string) {
 }
 
 func Migrate() {
+	runDatabaseMigrations()
+	log.Println("Database Migration Completed...")
+
+	initializeMerchTable()
+	log.Println("Merch table is ready")
+}
+
+func runDatabaseMigrations() {
 	Instance.AutoMigrate(&entities.User{})
 	Instance.AutoMigrate(&entities.Merch{})
 	Instance.AutoMigrate(&entities.Transaction{})
 	Instance.AutoMigrate(&entities.Purchase{})
-	log.Println("Database Migration Completed...")
-
-	InitializeMerchTable(Instance)
-	log.Println("Merch table is ready")
 }
 
-func InitializeMerchTable(db *gorm.DB) {
-	for _, item := range predefinedMerchItems {
-		var existing entities.Merch
-		if err := db.Where("type = ?", item.Type).First(&existing).Error; err != nil {
-			db.Create(&item)
+func initializeMerchTable() {
+	predefinedMerchItems := getPredefinedMerchItems()
+	for _, merchItem := range predefinedMerchItems {
+		if merchExists(merchItem) {
+			insertMerchItemToDB(merchItem)
 		}
 	}
+}
+
+func getPredefinedMerchItems() []entities.Merch {
+	return []entities.Merch{
+		{Type: "t-shirt", Cost: 80},
+		{Type: "cup", Cost: 20},
+		{Type: "book", Cost: 50},
+		{Type: "pen", Cost: 10},
+		{Type: "powerbank", Cost: 200},
+		{Type: "hoody", Cost: 300},
+		{Type: "umbrella", Cost: 200},
+		{Type: "socks", Cost: 10},
+		{Type: "wallet", Cost: 50},
+		{Type: "pink-hoody", Cost: 500},
+	}
+}
+
+func merchExists(merch entities.Merch) bool {
+	_, err := GetMerchByType(merch.Type)
+	return (err == nil)
+}
+
+func insertMerchItemToDB(merchItem entities.Merch) {
+	Instance.Create(&merchItem)
 }

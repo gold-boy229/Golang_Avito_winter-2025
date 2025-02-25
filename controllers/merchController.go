@@ -152,7 +152,7 @@ func sendCoinsToUser(fromUser *entities.User, toUser *entities.User, amount uint
 func BuyItemHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var merchType string = vars["item"]
-	merch, err := GetMerchByType(merchType)
+	merch, err := database.GetMerchByType(merchType)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
@@ -255,16 +255,6 @@ func GetUserByUsername(username string) (user entities.User, err error) {
 	result := database.Instance.Where("username = ?", username).First(&user)
 	if result.Error != nil {
 		err = fmt.Errorf("there is no user with username %s", username)
-	}
-	return
-}
-
-func GetMerchByType(merchType string) (merch entities.Merch, err error) {
-	merch = entities.Merch{}
-	err = nil
-	result := database.Instance.Where("type = ?", merchType).First(&merch)
-	if result.Error != nil {
-		err = fmt.Errorf("there is no merch with type %s", merchType)
 	}
 	return
 }
