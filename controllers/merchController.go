@@ -6,7 +6,6 @@ import (
 	"MerchShop/jwtutil"
 	"MerchShop/model"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -27,19 +26,19 @@ func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
 		sentOperations     []model.SentOperation
 	)
 
-	err = getInventoryItems(&curUser, &inventoryItems)
+	inventoryItems, err = database.GetUserInventoryItems(curUser)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	err = getReceivedOperations(&curUser, &receivedOperations)
+	receivedOperations, err = database.GetReceivedOperations(curUser)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	err = getSentOperations(&curUser, &sentOperations)
+	sentOperations, err = database.GetSentOperations(curUser)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -49,34 +48,6 @@ func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
 	infoResponse := model.InfoResponse{Coins: coins, Inventory: inventoryItems, CoinHistory: coinHistory}
 
 	respondJSON(w, http.StatusOK, infoResponse)
-}
-
-func getInventoryItems(user *entities.User, inventoryItems *[]model.InventoryItem) (err error) {
-	err = database.Instance.Table("purchase").
-		Select("merch.type, SUM(purchase.quantity) as quantity").
-		Joins("INNER JOIN merch ON purchase.merchId = merch.Id").
-		Where("purchase.user_id = ?", user.Id).
-		Group("merch.type").
-		Scan(&inventoryItems).Error
-	return err
-}
-
-func getReceivedOperations(user *entities.User, receivedOperations *[]model.ReceivedOperation) (err error) {
-	err = database.Instance.Table("transaction").
-		Select("from_user_id AS fromUserId, SUM(amount)").
-		Where("to_user_id = ?", user.Id).
-		Group("from_user_id").
-		Scan(&receivedOperations).Error
-	return err
-}
-
-func getSentOperations(user *entities.User, sentOperations *[]model.SentOperation) (err error) {
-	err = database.Instance.Table("transaction").
-		Select("to_user_id AS toUserId, SUM(amount)").
-		Where("from_user_id = ?", user.Id).
-		Group("to_user_id").
-		Scan(&sentOperations).Error
-	return err
 }
 
 ////
@@ -95,7 +66,7 @@ func SendCoinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	toUser, err := GetUserByUsername(sendCoinRequest.ToUser)
+	toUser, err := database.GetUserByUsername(sendCoinRequest.ToUser)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
@@ -219,7 +190,7 @@ func GetAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if user exists in BD:
 	//   yes) check password and give token
 	//   no) create newUser and give token
-	user, err := GetUserByUsername(authRequest.Username)
+	user, err := database.GetUserByUsername(authRequest.Username)
 	if err == nil {
 		if err := user.CheckPassword(authRequest.Password); err != nil {
 			respondError(w, http.StatusUnauthorized, err.Error())
@@ -246,17 +217,7 @@ func GetAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 func getUserAfterMiddleware(r *http.Request) (user entities.User, err error) {
 	username := r.Header.Get(USERNAME)
-	return GetUserByUsername(username)
-}
-
-func GetUserByUsername(username string) (user entities.User, err error) {
-	user = entities.User{}
-	err = nil
-	result := database.Instance.Where("username = ?", username).First(&user)
-	if result.Error != nil {
-		err = fmt.Errorf("there is no user with username %s", username)
-	}
-	return
+	return database.GetUserByUsername(username)
 }
 
 ////
