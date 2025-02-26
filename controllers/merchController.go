@@ -204,7 +204,7 @@ func GetAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tokenJWT, err := jwtutil.GenerateJWT(authRequest.Username)
+	tokenJWT, err := jwtutil.GenerateTokenFor(user)
 	if err != nil {
 		respondInternalServerError(w, err.Error())
 		return
