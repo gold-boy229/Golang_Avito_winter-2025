@@ -14,16 +14,29 @@ type Config struct {
 var AppConfig *Config
 
 func LoadAppConfig() {
-	log.Println("Loading Server Configurations...")
+	setConfigFileParametrs()
+
+	if err := readConfigFile(); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := loadAppConfig(); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Server Configurations were loaded successfully")
+}
+
+func setConfigFileParametrs() {
 	viper.AddConfigPath("./config/")
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = viper.Unmarshal(&AppConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
+}
+
+func readConfigFile() error {
+	return viper.ReadInConfig()
+}
+
+func loadAppConfig() error {
+	return viper.Unmarshal(&AppConfig)
 }
