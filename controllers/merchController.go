@@ -13,7 +13,7 @@ import (
 )
 
 func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := getUserAfterMiddleware(r)
+	user, err := database.GetUserByUsername(getUsernameFromHeader(r))
 	if err != nil {
 		respondBadRequest(w, err.Error())
 		return
@@ -60,7 +60,7 @@ func SendCoinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	curUser, err := getUserAfterMiddleware(r)
+	curUser, err := database.GetUserByUsername(getUsernameFromHeader(r))
 	if err != nil {
 		respondBadRequest(w, err.Error())
 		return
@@ -129,7 +129,7 @@ func BuyItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := getUserAfterMiddleware(r)
+	user, err := database.GetUserByUsername(getUsernameFromHeader(r))
 	if err != nil {
 		respondBadRequest(w, err.Error())
 		return

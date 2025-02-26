@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"MerchShop/database"
-	"MerchShop/entities"
 	"MerchShop/jwtutil"
 	"net/http"
 	"strings"
@@ -15,27 +13,38 @@ const (
 func JWTMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-
-			tokenString := r.Header.Get("Authorization")
-			if len(tokenString) == 0 {
-				respondError(w, http.StatusUnauthorized, "Missing Authorization Header")
+			authorizationString := r.Header.Get("Authorization")
+			if isEmptyString(authorizationString) {
+				respondUnauthorized(w, "Missing Authorization Header")
 				return
 			}
-			tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
 
-			claims, err := jwtutil.VerifyToken(tokenString)
+			token := getBearerToken(authorizationString)
+
+			claims, err := jwtutil.VerifyToken(token)
 			if err != nil {
-				respondError(w, http.StatusUnauthorized, "Error verifying JWT token: "+err.Error())
+				respondUnauthorized(w, "Error verifying JWT token: "+err.Error())
 				return
 			}
 
-			r.Header.Set(USERNAME, claims.Username)
+			setUsernameIntoHeader(r, claims.Username)
 			next.ServeHTTP(w, r)
 		},
 	)
 }
 
-func getUserAfterMiddleware(r *http.Request) (user entities.User, err error) {
-	username := r.Header.Get(USERNAME)
-	return database.GetUserByUsername(username)
+func isEmptyString(s string) bool {
+	return len(s) == 0
+}
+
+func getBearerToken(authorizationString string) string {
+	return strings.Replace(authorizationString, "Bearer ", "", 1)
+}
+
+func setUsernameIntoHeader(r *http.Request, username string) {
+	r.Header.Set(USERNAME, username)
+}
+
+func getUsernameFromHeader(r *http.Request) (username string) {
+	return r.Header.Get(USERNAME)
 }
