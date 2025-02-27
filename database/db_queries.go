@@ -9,17 +9,19 @@ import (
 func GetMerchByType(merchType string) (merch entities.Merch, err error) {
 	result := Instance.Where("type = ?", merchType).First(&merch)
 	if result.Error != nil {
-		err = fmt.Errorf("there is no merch with type %s", merchType)
+		return merch, fmt.Errorf("there is no merch with type %s", merchType)
 	}
-	return merch, err
+
+	return merch, nil
 }
 
 func GetUserByUsername(username string) (user entities.User, err error) {
 	result := Instance.Where("username = ?", username).First(&user)
 	if result.Error != nil {
-		err = fmt.Errorf("there is no user with username %s", username)
+		return user, fmt.Errorf("there is no user with username %s", username)
 	}
-	return
+
+	return user, nil
 }
 
 func GetUserInventoryItems(user entities.User) (inventoryItems []model.InventoryItem, err error) {
@@ -29,11 +31,11 @@ func GetUserInventoryItems(user entities.User) (inventoryItems []model.Inventory
 		Where("purchase.user_id = ?", user.Id).
 		Group("merch.type").
 		Scan(&inventoryItems)
-
 	if result.Error != nil {
-		err = result.Error
+		return inventoryItems, result.Error
 	}
-	return inventoryItems, err
+
+	return inventoryItems, nil
 }
 
 func GetReceivedOperations(user entities.User) (receivedOperations []model.ReceivedOperation, err error) {
@@ -42,11 +44,11 @@ func GetReceivedOperations(user entities.User) (receivedOperations []model.Recei
 		Where("to_user_id = ?", user.Id).
 		Group("from_user_id").
 		Scan(&receivedOperations)
-
 	if result.Error != nil {
-		err = result.Error
+		return receivedOperations, result.Error
 	}
-	return receivedOperations, err
+
+	return receivedOperations, nil
 }
 
 func GetSentOperations(user entities.User) (sentOperations []model.SentOperation, err error) {
@@ -55,9 +57,9 @@ func GetSentOperations(user entities.User) (sentOperations []model.SentOperation
 		Where("from_user_id = ?", user.Id).
 		Group("to_user_id").
 		Scan(&sentOperations)
-
 	if result.Error != nil {
-		err = result.Error
+		return sentOperations, result.Error
 	}
-	return sentOperations, err
+
+	return sentOperations, nil
 }
