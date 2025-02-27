@@ -2,8 +2,8 @@ package main
 
 import (
 	"MerchShop/config"
-	"MerchShop/controllers"
 	"MerchShop/database"
+	"MerchShop/handlers"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,18 +35,18 @@ func initializeRouter() *mux.Router {
 
 func registerRoutes(router *mux.Router) {
 
-	router.HandleFunc("/api/auth", controllers.GetAuthTokenHandler).Methods(http.MethodPost)
+	router.HandleFunc("/api/auth", handlers.GetAuthTokenHandler).Methods(http.MethodPost)
 
-	router.Handle("/api/buy/{item}", useJWTMiddleware(controllers.BuyItemHandler)).Methods(http.MethodGet)
-	router.Handle("/api/sendCoin", useJWTMiddleware(controllers.SendCoinHandler)).Methods(http.MethodPost)
-	router.Handle("/api/info", useJWTMiddleware(controllers.GetInfoHandler)).Methods(http.MethodGet)
+	router.Handle("/api/buy/{item}", useJWTMiddleware(handlers.BuyItemHandler)).Methods(http.MethodGet)
+	router.Handle("/api/sendCoin", useJWTMiddleware(handlers.SendCoinHandler)).Methods(http.MethodPost)
+	router.Handle("/api/info", useJWTMiddleware(handlers.GetInfoHandler)).Methods(http.MethodGet)
 
 	// TODO
 	// Попробовать сделать что-то через группировку путей:
 	// jwt-authentication-golang  file main.go  func initRouter()
 
-	router.NotFoundHandler = http.HandlerFunc(controllers.NotFoundHandler)
-	router.MethodNotAllowedHandler = http.HandlerFunc(controllers.MethodNotAllowedHandler)
+	router.NotFoundHandler = http.HandlerFunc(handlers.NotFoundHandler)
+	router.MethodNotAllowedHandler = http.HandlerFunc(handlers.MethodNotAllowedHandler)
 }
 
 func startServer(router *mux.Router) {
@@ -57,5 +57,5 @@ func startServer(router *mux.Router) {
 }
 
 func useJWTMiddleware(func(http.ResponseWriter, *http.Request)) http.Handler {
-	return controllers.JWTMiddleware(http.HandlerFunc(controllers.BuyItemHandler))
+	return handlers.JWTMiddleware(http.HandlerFunc(handlers.BuyItemHandler))
 }
