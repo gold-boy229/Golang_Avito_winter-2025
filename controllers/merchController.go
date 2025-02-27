@@ -6,6 +6,7 @@ import (
 	"MerchShop/jwtutil"
 	"MerchShop/model"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -53,10 +54,9 @@ func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
 ////
 
 func SendCoinHandler(w http.ResponseWriter, r *http.Request) {
-	var sendCoinRequest model.SendCoinRequest
-	err := json.NewDecoder(r.Body).Decode(&sendCoinRequest)
+	sendCoinRequest, err := getSendCoinRequest(r)
 	if err != nil {
-		respondBadRequest(w, "Invalid request body.\n"+err.Error())
+		respondBadRequest(w, err.Error())
 		return
 	}
 
@@ -79,6 +79,14 @@ func SendCoinHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, nil)
+}
+
+func getSendCoinRequest(r *http.Request) (sendCoinRequest model.SendCoinRequest, err error) {
+	err = json.NewDecoder(r.Body).Decode(&sendCoinRequest)
+	if err != nil {
+		return sendCoinRequest, errors.New("Invalid request body.\n" + err.Error())
+	}
+	return sendCoinRequest, nil
 }
 
 func sendCoinsToUser(fromUser, toUser entities.User, amount uint) (statusCode int, err error) {
@@ -111,18 +119,19 @@ func sendCoinsToUser(fromUser, toUser entities.User, amount uint) (statusCode in
 		// return nil will commit the whole transaction
 		return nil
 	})
-
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
+
 	return http.StatusOK, nil
 }
 
 ////
 
 func BuyItemHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	var merchType string = vars["item"]
+	routeVariables := getRouteVariables(r)
+	merchType := routeVariables["item"]
+
 	merch, err := database.GetMerchByType(merchType)
 	if err != nil {
 		respondBadRequest(w, err.Error())
@@ -142,6 +151,10 @@ func BuyItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, nil)
+}
+
+func getRouteVariables(r *http.Request) map[string]string {
+	return mux.Vars(r)
 }
 
 func buyMerch(user entities.User, merch entities.Merch) (statusCode int, err error) {
@@ -164,44 +177,30 @@ func buyMerch(user entities.User, merch entities.Merch) (statusCode int, err err
 		// return nil will commit the whole transaction
 		return nil
 	})
-
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
+
 	return http.StatusOK, nil
 }
 
 ////
 
 func GetAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
-	var authRequest model.AuthRequest
-
-	err := json.NewDecoder(r.Body).Decode(&authRequest)
+	authRequest, err := getAuthRequest(r)
 	if err != nil {
-		respondBadRequest(w, "Invalid request body.\n"+err.Error())
+		respondBadRequest(w, err.Error())
 		return
 	}
 
-	if authRequest.Username == "" || authRequest.Password == "" {
-		respondBadRequest(w, "username and password shouldn't be empty")
+	if err = hasUsernameAndPassword(authRequest); err != nil {
+		respondBadRequest(w, err.Error())
 		return
 	}
 
-	// Check if user exists in BD:
-	//   yes) check password and give token
-	//   no) create newUser and give token
-	user, err := database.GetUserByUsername(authRequest.Username)
-	if err == nil {
-		if err := user.CheckPassword(authRequest.Password); err != nil {
-			respondUnauthorized(w, err.Error())
-			return
-		}
-	} else {
-		newUser := entities.User{Username: authRequest.Username, Password: authRequest.Password}
-		if err := database.Instance.Create(&newUser).Error; err != nil {
-			respondInternalServerError(w, "Couldn't create a new user.\n"+err.Error())
-			return
-		}
+	user, statusCode, err := validateUserOrCreateNewOne(authRequest)
+	if err != nil {
+		respondError(w, statusCode, err.Error())
 	}
 
 	tokenJWT, err := jwtutil.GenerateTokenFor(user)
@@ -211,6 +210,50 @@ func GetAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, model.AuthResponse{Token: tokenJWT})
+}
+
+func getAuthRequest(r *http.Request) (authRequest model.AuthRequest, err error) {
+	err = json.NewDecoder(r.Body).Decode(&authRequest)
+	if err != nil {
+		return authRequest, errors.New("Invalid request body.\n" + err.Error())
+	}
+	return authRequest, nil
+}
+
+func hasUsernameAndPassword(authRequest model.AuthRequest) error {
+	if isEmptyString(authRequest.Username) || isEmptyString(authRequest.Password) {
+		return errors.New("username or password is empty")
+	}
+	return nil
+}
+
+func validateUserOrCreateNewOne(authRequest model.AuthRequest) (user entities.User, statusCode int, err error) {
+	user, err = isThereUserWithSuchUsername(authRequest.Username)
+	if err == nil {
+		if err := user.CheckPassword(authRequest.Password); err != nil {
+			return user, http.StatusUnauthorized, err
+		}
+	} else {
+		newUserCredentials := entities.User{Username: authRequest.Username, Password: authRequest.Password}
+		user, err = createNewUser(newUserCredentials)
+		if err != nil {
+			return user, http.StatusInternalServerError, err
+		}
+	}
+
+	return user, http.StatusOK, nil
+}
+
+func isThereUserWithSuchUsername(username string) (entities.User, error) {
+	return database.GetUserByUsername(username)
+}
+
+func createNewUser(newUser entities.User) (entities.User, error) {
+	err := database.Instance.Create(&newUser).Error
+	if err != nil {
+		return newUser, errors.New("Couldn't create a new user.\n" + err.Error())
+	}
+	return newUser, nil
 }
 
 ////
