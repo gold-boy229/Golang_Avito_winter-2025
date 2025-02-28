@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"MerchShop/database"
 	"MerchShop/entities"
 	"MerchShop/jwtutil"
 	"MerchShop/model"
@@ -14,7 +13,7 @@ import (
 )
 
 func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := database.GetUserByUsername(getUsernameFromHeader(r))
+	user, err := getUserByUsername(getUsernameFromHeader(r))
 	if err != nil {
 		respondBadRequest(w, err.Error())
 		return
@@ -27,19 +26,19 @@ func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
 		sentOperations     []model.SentOperation
 	)
 
-	inventoryItems, err = database.GetUserInventoryItems(user)
+	inventoryItems, err = getUserInventoryItems(user)
 	if err != nil {
 		respondInternalServerError(w, err.Error())
 		return
 	}
 
-	receivedOperations, err = database.GetReceivedOperations(user)
+	receivedOperations, err = getReceivedOperations(user)
 	if err != nil {
 		respondInternalServerError(w, err.Error())
 		return
 	}
 
-	sentOperations, err = database.GetSentOperations(user)
+	sentOperations, err = getSentOperations(user)
 	if err != nil {
 		respondInternalServerError(w, err.Error())
 		return
@@ -60,13 +59,13 @@ func SendCoinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	curUser, err := database.GetUserByUsername(getUsernameFromHeader(r))
+	curUser, err := getUserByUsername(getUsernameFromHeader(r))
 	if err != nil {
 		respondBadRequest(w, err.Error())
 		return
 	}
 
-	toUser, err := database.GetUserByUsername(sendCoinRequest.ToUser)
+	toUser, err := getUserByUsername(sendCoinRequest.ToUser)
 	if err != nil {
 		respondBadRequest(w, err.Error())
 		return
@@ -100,7 +99,7 @@ func sendCoinsToUser(fromUser, toUser entities.User, amount uint) (statusCode in
 		return http.StatusBadRequest, err
 	}
 
-	err = database.Instance.Transaction(func(tx *gorm.DB) error {
+	err = getDB().Transaction(func(tx *gorm.DB) error {
 		fromUser.Balance -= amount
 		if err := tx.Save(&fromUser).Error; err != nil {
 			return err
@@ -132,13 +131,13 @@ func BuyItemHandler(w http.ResponseWriter, r *http.Request) {
 	routeVariables := getRouteVariables(r)
 	merchType := routeVariables["item"]
 
-	merch, err := database.GetMerchByType(merchType)
+	merch, err := getMerchByType(merchType)
 	if err != nil {
 		respondBadRequest(w, err.Error())
 		return
 	}
 
-	user, err := database.GetUserByUsername(getUsernameFromHeader(r))
+	user, err := getUserByUsername(getUsernameFromHeader(r))
 	if err != nil {
 		respondBadRequest(w, err.Error())
 		return
@@ -163,7 +162,7 @@ func buyMerch(user entities.User, merch entities.Merch) (statusCode int, err err
 		return http.StatusBadRequest, err
 	}
 
-	err = database.Instance.Transaction(func(tx *gorm.DB) error {
+	err = getDB().Transaction(func(tx *gorm.DB) error {
 		purchase := entities.Purchase{UserId: user.Id, MerchId: merch.Id}
 		if err := tx.Create(&purchase).Error; err != nil {
 			return err
@@ -228,7 +227,7 @@ func hasUsernameAndPassword(authRequest model.AuthRequest) error {
 }
 
 func validateUserOrCreateNewOne(authRequest model.AuthRequest) (user entities.User, statusCode int, err error) {
-	user, err = isThereUserWithSuchUsername(authRequest.Username)
+	user, err = getUserByUsername(authRequest.Username)
 	if err == nil {
 		if err := user.CheckPassword(authRequest.Password); err != nil {
 			return user, http.StatusUnauthorized, err
@@ -242,18 +241,6 @@ func validateUserOrCreateNewOne(authRequest model.AuthRequest) (user entities.Us
 	}
 
 	return user, http.StatusOK, nil
-}
-
-func isThereUserWithSuchUsername(username string) (entities.User, error) {
-	return database.GetUserByUsername(username)
-}
-
-func createNewUser(newUser entities.User) (entities.User, error) {
-	err := database.Instance.Create(&newUser).Error
-	if err != nil {
-		return newUser, errors.New("Couldn't create a new user.\n" + err.Error())
-	}
-	return newUser, nil
 }
 
 ////

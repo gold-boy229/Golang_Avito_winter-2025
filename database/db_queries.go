@@ -3,6 +3,7 @@ package database
 import (
 	"MerchShop/entities"
 	"MerchShop/model"
+	"errors"
 	"fmt"
 )
 
@@ -13,6 +14,14 @@ func GetMerchByType(merchType string) (merch entities.Merch, err error) {
 	}
 
 	return merch, nil
+}
+
+func CreateNewUser(newUser entities.User) (entities.User, error) {
+	err := Instance.Create(&newUser).Error
+	if err != nil {
+		return newUser, errors.New("Couldn't create a new user.\n" + err.Error())
+	}
+	return newUser, nil
 }
 
 func GetUserByUsername(username string) (user entities.User, err error) {
