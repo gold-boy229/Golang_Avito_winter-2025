@@ -38,7 +38,7 @@ func runDatabaseMigrations() {
 func initializeMerchTable() {
 	predefinedMerchItems := getPredefinedMerchItems()
 	for _, merchItem := range predefinedMerchItems {
-		if merchExists(merchItem) {
+		if !merchExists(merchItem) {
 			insertMerchItemToDB(merchItem)
 		}
 	}
