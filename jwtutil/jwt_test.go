@@ -1,127 +1,138 @@
 package jwtutil
 
 import (
+	"MerchShop/entities"
+	"fmt"
 	"testing"
-	"time"
-
-	"github.com/dgrijalva/jwt-go"
 )
 
-func TestGenerateJWT(t *testing.T) {
-	username := "testuser"
-	tokenString, err := GenerateJWT(username)
+const (
+	TIMESTAMP_123        int64 = 123
+	TIMESTAMP_123456     int64 = 123456
+	TIMESTAMP_1740690120 int64 = 1740690120
+	TIMESTAMP_2040690120 int64 = 2040690120
 
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+	TOKEN_NICK_1740690120     string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6Ik5pY2siLCJleHAiOjE3NDA2OTAxMjB9.uOPMKALxOCm14Wf6QGdykQDMRgHGQEHSFt4WjpOyWyg"
+	TOKEN_LEONARDO_1740690120 string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6Ikxlb25hcmRvIiwiZXhwIjoxNzQwNjkwMTIwfQ.6K6xtEL2yVbxHtroAPHVd2bB5Da1NMD3uv2oDT1966w"
+)
+
+func TestGenerateTokenFor(t *testing.T) {
+	tests := []struct {
+		user          entities.User
+		expiresAt     int64
+		expectedToken string
+	}{
+		{
+			entities.User{Username: "Nick"},
+			TIMESTAMP_1740690120,
+			TOKEN_NICK_1740690120,
+		},
+		{
+			entities.User{Username: "Leonardo"},
+			TIMESTAMP_1740690120,
+			TOKEN_LEONARDO_1740690120,
+		},
+		{
+			entities.User{Username: "Leonardo", Password: "JWT uses only username"},
+			TIMESTAMP_1740690120,
+			TOKEN_LEONARDO_1740690120,
+		},
 	}
 
-	// Parse the token
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaim{}, func(token *jwt.Token) (interface{}, error) {
-		// Ensure that the token's signing method is what we expect
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, jwt.NewValidationError("unexpected signing method", jwt.ValidationErrorUnverifiable)
+	for _, test := range tests {
+		gotToken, _ := generateTokenFor(test.user, expirationSetting{test.expiresAt, true})
+		if gotToken != test.expectedToken {
+			t.Errorf("user = %v\n expectedToken = %q\n gotToken = %q",
+				test.user, test.expectedToken, gotToken)
 		}
-		return jwtKey, nil
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to parse token: %v", err)
-	}
-
-	// Check claims
-	claims, ok := token.Claims.(*JWTClaim)
-	if !ok {
-		t.Fatalf("Expected claims of type *JWTClaim, got %T", token.Claims)
-	}
-
-	if !token.Valid {
-		t.Fatalf("Token is invalid. Claims: %+v", claims)
-	}
-
-	if claims.Username != username {
-		t.Errorf("Expected username %s, got %s", username, claims.Username)
-	}
-
-	// Check expiration time
-	if claims.ExpiresAt < time.Now().Unix() {
-		t.Errorf("Token has expired. ExpiresAt: %d, Current time: %d", claims.ExpiresAt, time.Now().Unix())
 	}
 }
 
-func TestVerifyToken(t *testing.T) {
-	// Helper function to generate a valid token
-	generateValidToken := func(username string) string {
-		claims := &JWTClaim{
-			Username: username,
-			StandardClaims: jwt.StandardClaims{
-				ExpiresAt: time.Now().Add(1 * time.Hour).Unix(),
-			},
-		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, err := token.SignedString(jwtKey)
-		if err != nil {
-			t.Fatalf("Failed to generate valid token: %v", err)
-		}
-		return tokenString
+func TestCalculateExpitarionTime(t *testing.T) {
+	tests := []struct {
+		expirationSetting expirationSetting
+		expectedResult    int64
+		wantError         bool
+	}{
+		{
+			expirationSetting{expiresAt: TIMESTAMP_123, useGivenTime: true},
+			TIMESTAMP_123,
+			false,
+		},
+		{
+			expirationSetting{expiresAt: TIMESTAMP_123, useGivenTime: false},
+			TIMESTAMP_123,
+			true,
+		},
+		{
+			expirationSetting{expiresAt: TIMESTAMP_123456, useGivenTime: true},
+			TIMESTAMP_123456,
+			false,
+		},
+		{
+			expirationSetting{expiresAt: TIMESTAMP_123, useGivenTime: true},
+			TIMESTAMP_123456,
+			true,
+		},
 	}
 
-	// Test valid token
-	t.Run("Valid token", func(t *testing.T) {
-		tokenString := generateValidToken("testuser")
-		claims, err := VerifyToken(tokenString)
-		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
+	for _, test := range tests {
+		gotExpirationTime := calculateExpitarionTime(test.expirationSetting)
+		if (gotExpirationTime != test.expectedResult) != test.wantError {
+			t.Errorf("wantError = %v\n expectedResult = %v\n gotExpirationTime = %v",
+				test.wantError, test.expectedResult, gotExpirationTime)
 		}
-		if claims.Username != "testuser" {
-			t.Errorf("Expected username 'testuser', got '%s'", claims.Username)
-		}
-	})
+	}
+}
 
-	// Test expired token
-	t.Run("Expired token", func(t *testing.T) {
-		claims := &JWTClaim{
-			Username: "testuser",
-			StandardClaims: jwt.StandardClaims{
-				ExpiresAt: time.Now().Add(-1 * time.Hour).Unix(), // Expired 1 hour ago
-			},
-		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, err := token.SignedString(jwtKey)
-		if err != nil {
-			t.Fatalf("Failed to generate expired token: %v", err)
-		}
+type verifyTokenStruct struct {
+	providedToken        string
+	expectUsername       string
+	expectExpirationTime int64
+	wantError            bool
+}
 
-		_, err = VerifyToken(tokenString)
-		if err == nil {
-			t.Fatal("Expected error for expired token, got none")
-		}
-		if err.Error() != "token is either expired or not active yet" {
-			t.Errorf("Expected 'token is either expired or not active yet', got '%v'", err)
-		}
-	})
+func TestVerifyToken(t *testing.T) {
+	tests := []verifyTokenStruct{
+		{
+			TOKEN_NICK_1740690120,
+			"Nick",
+			TIMESTAMP_1740690120,
+			false,
+		},
+		{
+			TOKEN_LEONARDO_1740690120,
+			"Leonardo",
+			TIMESTAMP_1740690120,
+			false,
+		},
+		{
+			TOKEN_LEONARDO_1740690120,
+			"Not Leonardd",
+			TIMESTAMP_1740690120,
+			true,
+		},
+	}
 
-	// Test malformed token
-	t.Run("Malformed token", func(t *testing.T) {
-		_, err := VerifyToken("malformed.token.string")
-		if err == nil {
-			t.Fatal("Expected error for malformed token, got none")
+	for _, test := range tests {
+		gotClaims, tokenErr := VerifyToken(test.providedToken)
+		err := areEqualGotAndExpectedClaims(gotClaims, test)
+		if (err != nil) != test.wantError {
+			t.Errorf("tokenErr = %v\n err = %v\n wantError = %v",
+				tokenErr.Error(), err.Error(), test.wantError)
 		}
-		if err.Error() != "malformed token" {
-			t.Errorf("Expected 'malformed token', got '%v'", err)
-		}
-	})
+	}
+}
 
-	// Test invalid key
-	t.Run("Invalid key", func(t *testing.T) {
-		tokenString := generateValidToken("testuser")
-		// Temporarily change the global key to an invalid one
-		originalKey := jwtKey
-		jwtKey = []byte("wrongkey")
-		defer func() { jwtKey = originalKey }() // Restore the original key
-
-		_, err := VerifyToken(tokenString)
-		if err == nil {
-			t.Fatal("Expected error for invalid key, got none")
-		}
-	})
+func areEqualGotAndExpectedClaims(gotClaims JWTClaim, test verifyTokenStruct) error {
+	var (
+		sameUsername       bool = (gotClaims.Username == test.expectUsername)
+		sameExpirationTime bool = (gotClaims.StandardClaims.ExpiresAt == test.expectExpirationTime)
+	)
+	if sameUsername && sameExpirationTime {
+		return nil
+	} else {
+		return fmt.Errorf("gotClaims.Username = %q; test.expectUsername = %q\n gotClaims.StandardClaims.ExpiresAt = %v; test.expectExpirationTime = %v",
+			gotClaims.Username, test.expectUsername, gotClaims.StandardClaims.ExpiresAt, test.expectExpirationTime)
+	}
 }

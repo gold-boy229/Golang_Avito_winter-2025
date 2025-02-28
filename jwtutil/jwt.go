@@ -15,55 +15,52 @@ type JWTClaim struct {
 	jwt.StandardClaims
 }
 
-func GenerateTokenFor(user entities.User) (string, error) {
-	signedToken, err := getSignedToken(user)
-	if err != nil {
-		return "", err
-	}
-	return signedToken, nil
+type expirationSetting struct {
+	expiresAt    int64
+	useGivenTime bool
 }
 
-func getSignedToken(user entities.User) (string, error) {
-	expirationTime := time.Now().Add(1 * time.Hour)
+func GenerateTokenFor(user entities.User) (string, error) {
+	return generateTokenFor(user, expirationSetting{useGivenTime: false})
+}
+
+func generateTokenFor(user entities.User, expirationSetting expirationSetting) (string, error) {
 	tokenClaims := JWTClaim{
 		Username: user.Username,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expirationTime.Unix(),
+			ExpiresAt: calculateExpitarionTime(expirationSetting),
 		},
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims)
-	return token.SignedString(jwtKey)
+	signedToken, err := token.SignedString(jwtKey)
+	if err != nil {
+		return "", err
+	}
+
+	return signedToken, nil
+}
+
+func calculateExpitarionTime(expirationSetting expirationSetting) (expirationTime int64) {
+	if expirationSetting.useGivenTime {
+		expirationTime = expirationSetting.expiresAt
+	} else {
+		expirationTime = time.Now().Add(1 * time.Hour).Unix()
+	}
+	return expirationTime
 }
 
 func VerifyToken(tokenString string) (claims JWTClaim, err error) {
-	token, err := parseSignedToken(tokenString)
-	if err != nil {
-		return claims, err
-	}
-
-	if !isValid(token) {
-		return claims, errors.New("token is not valid")
-	}
-
-	claims, ok := token.Claims.(JWTClaim)
-	if !ok {
-		return claims, errors.New("incorrect token claims type")
-	}
-
-	return claims, nil
-}
-
-func parseSignedToken(tokenString string) (*jwt.Token, error) {
-	token, err := jwt.ParseWithClaims(
+	_, err = jwt.ParseWithClaims(
 		tokenString,
-		JWTClaim{},
+		&claims,
 		func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		},
 	)
-	return token, err
-}
+	if err != nil {
+		return claims, errors.New("Some error after jwt.ParseWithClaims\n" + err.Error())
+	}
 
-func isValid(token *jwt.Token) bool {
-	return token.Valid
+	return claims, nil
 }
